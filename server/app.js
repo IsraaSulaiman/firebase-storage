@@ -21,6 +21,7 @@ app.post('/api/v1/image', async (req, res) => {
       expires: Date.now() + 60 * 60 * 1000,
       version: 'v4'
     }
+    console.log(file);
     const bucket = admin.storage().bucket();
     const imgeUrlRef = bucket.file(`/images/${userId}/${file}`);
     const [imageUrl] = await imgeUrlRef.getSignedUrl(options);
