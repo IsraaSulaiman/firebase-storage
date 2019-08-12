@@ -3,6 +3,8 @@ const cookie = require('cookie-parser');
 const { join } = require('path');
 const admin = require('./firebase/index');
 const generateUrls = require('./helpers/generateUrl');
+const fileUpload = require('express-fileupload');
+const axios = require('axios');
 
 const app = express();
 
@@ -10,22 +12,37 @@ app.use(express.json());
 
 app.use(cookie());
 
+app.use(fileUpload({
+  limits: { fileSize: 50 * 1024 * 1024 },
+}));
+
 app.set('port', process.env.PORT || 4300);
 
 app.post('/api/v1/image', async (req, res) => {
   try {
-    const file = req.body.image;
+    const file = req.files.file;
+    const fileName = file.name;
     const userId = 1;
     const options = {
       action: 'write',
       expires: Date.now() + 60 * 60 * 1000,
       version: 'v4'
     }
-    console.log(file);
+    
+    // Gerneral Write signed Url
+
     const bucket = admin.storage().bucket();
-    const imgeUrlRef = bucket.file(`/images/${userId}/${file}`);
+    const imgeUrlRef = bucket.file(`/images/${userId}/${fileName}`);
     const [imageUrl] = await imgeUrlRef.getSignedUrl(options);
-    res.send({ imageUrl, file });
+
+    // Send Request To upload Image From the BackEnd
+    await axios.put(imageUrl, file.data);
+
+    // Get SignedUrl for the Image
+    const [imageSRC] = await imgeUrlRef.getSignedUrl({ action: 'read', expires: Date.now() + 60 * 60 * 1000, version: 'v4' });
+
+    // Send the URL
+    res.send({ imageUrl: imageSRC });
   } catch (error) {
     console.log(error);
   }
@@ -67,25 +84,6 @@ app.delete('/api/v1/image', async (req, res) => {
     console.log(error)
   }
 });
-
-//this is not a best solution to how to render the image, 
-//but it still works. will try to search for an alternative //
-app.post('/api/v1/get-img', async (req, res) => {
-  const userId = 1;
-  const imageName = req.body.imageName;
-
-  const options = {
-    action: 'read',
-    expires: Date.now() + 60 * 60 * 1000,
-    version: 'v4'
-  }
-
-  const bucket = admin.storage().bucket();
-  //how to get one file
-  const imgeUrlRef = await bucket.file(`/images/${userId}/${imageName}`);
-  const [imageUrl] = await imgeUrlRef.getSignedUrl(options);
-  res.send(imageUrl);
-})
 
 //new feature, downloading the photo; still in progress
 app.post('/api/v1/download', async (req, res) => {

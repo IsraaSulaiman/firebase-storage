@@ -29,23 +29,20 @@ class App extends Component {
     e.preventDefault();
     // post image
     try {
-      const imageName = this.state.image.name;
+      const imageName = this.state.image;
+
+      // Create a form to append file
+      
+      const form = new FormData();
+      form.append('file', imageName);
       const postResponse = await axios
-        .post('/api/v1/image', { image: imageName });
+        .post('/api/v1/image', form);
 
       const signedUrl = postResponse.data.imageUrl;
 
-      const uploadResponse = await axios.put(signedUrl, this.state.image);
-
-      //I can't use the signedUrl to render the image since 
-      //I set the option with write action only//
-
-      const getImageUrl = await axios.post('/api/v1/get-img', { imageName });
-      if (uploadResponse.status === 200) {
-        this.setState((preveState) => {
-          return { images: [...preveState.images, { id: imageName, imageUrl: getImageUrl.data }] }
-        })
-      }
+      this.setState((preveState) => {
+        return { images: [...preveState.images, { id: imageName.name, imageUrl: signedUrl }] }
+      });
     } catch (error) {
       console.log(error);
     }
